@@ -1,1 +1,1 @@
-# traversability_octomap
+# rough_octomap
