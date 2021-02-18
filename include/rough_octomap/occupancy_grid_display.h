@@ -33,7 +33,7 @@
 #ifndef RVIZ_ROUGH_OCCUPANCY_GRID_DISPLAY_H
 #define RVIZ_ROUGH_OCCUPANCY_GRID_DISPLAY_H
 
-#ifndef Q_MOC_RUN 
+#ifndef Q_MOC_RUN
 #include <ros/ros.h>
 
 #include <boost/shared_ptr.hpp>
@@ -45,7 +45,7 @@
 
 #include <octomap/OcTreeStamped.h>
 #include <octomap/ColorOcTree.h>
-#include <octomap/RoughOcTree.h>
+#include <rough_octomap/RoughOcTree.h>
 
 #include <rviz/display.h>
 #include "rviz/ogre_helpers/point_cloud.h"

@@ -31,7 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <octomap/RoughOcTree.h>
+#include <rough_octomap/RoughOcTree.h>
 
 namespace octomap {
 
@@ -133,7 +133,7 @@ namespace octomap {
 
     return true;
   }
-  
+
   RoughOcTreeNode* RoughOcTree::setNodeRough(const OcTreeKey& key,
                                              float rough) {
     RoughOcTreeNode* n = search (key);

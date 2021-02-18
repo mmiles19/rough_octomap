@@ -31,7 +31,7 @@
  */
 #include <QObject>
 
-#include "octomap_rviz_plugins/occupancy_grid_display.h"
+#include "rough_octomap/occupancy_grid_display.h"
 
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
@@ -120,7 +120,7 @@ OccupancyGridDisplay::OccupancyGridDisplay() :
   octree_coloring_property_->addOption( "Cell Probability",  OCTOMAP_PROBABLILTY_COLOR );
   octree_coloring_property_->addOption( "Cell Roughness",  OCTOMAP_ROUGH_COLOR );
   alpha_property_ = new rviz::FloatProperty( "Voxel Alpha", 1.0, "Set voxel transparency alpha",
-                                             this, 
+                                             this,
                                              SLOT( updateAlpha() ) );
   alpha_property_->setMin(0.0);
   alpha_property_->setMax(1.0);
@@ -380,7 +380,7 @@ bool TemplatedOccupancyGridDisplay<OcTreeType>::checkType(std::string type_id)
   setStatus(StatusProperty::Warn, "Messages", QString("Cannot verify octomap type"));
   return true; //Try deserialization, might crash though
 }
-  
+
 template <>
 bool TemplatedOccupancyGridDisplay<octomap::RoughOcTreeStamped>::checkType(std::string type_id)
 {
@@ -415,7 +415,7 @@ bool TemplatedOccupancyGridDisplay<octomap::ColorOcTree>::checkType(std::string 
 
 
 template <typename OcTreeType>
-void TemplatedOccupancyGridDisplay<OcTreeType>::setVoxelColor(PointCloud::Point& newPoint, 
+void TemplatedOccupancyGridDisplay<OcTreeType>::setVoxelColor(PointCloud::Point& newPoint,
                                                               typename OcTreeType::NodeType& node,
                                                               double minZ, double maxZ)
 {
@@ -443,7 +443,7 @@ void TemplatedOccupancyGridDisplay<OcTreeType>::setVoxelColor(PointCloud::Point&
 
 //Specialization for ColorOcTreeNode, which can set the voxel color from the node itself
 template <>
-void TemplatedOccupancyGridDisplay<octomap::ColorOcTree>::setVoxelColor(PointCloud::Point& newPoint, 
+void TemplatedOccupancyGridDisplay<octomap::ColorOcTree>::setVoxelColor(PointCloud::Point& newPoint,
                                                                       octomap::ColorOcTree::NodeType& node,
                                                                       double minZ, double maxZ)
 {
@@ -453,7 +453,7 @@ void TemplatedOccupancyGridDisplay<octomap::ColorOcTree>::setVoxelColor(PointClo
   {
     case OCTOMAP_CELL_COLOR:
     {
-      const float b2f = 1./256.; 
+      const float b2f = 1./256.;
       octomap::ColorOcTreeNode::Color& color = node.getColor();
       newPoint.setColor(b2f*color.r, b2f*color.g, b2f*color.b, node.getOccupancy());
       break;
@@ -474,7 +474,7 @@ void TemplatedOccupancyGridDisplay<octomap::ColorOcTree>::setVoxelColor(PointClo
 }
 
 template <>
-void TemplatedOccupancyGridDisplay<octomap::RoughOcTree>::setVoxelColor(PointCloud::Point& newPoint, 
+void TemplatedOccupancyGridDisplay<octomap::RoughOcTree>::setVoxelColor(PointCloud::Point& newPoint,
                                                               octomap::RoughOcTree::NodeType& node,
                                                               double minZ, double maxZ)
 {
@@ -500,7 +500,7 @@ void TemplatedOccupancyGridDisplay<octomap::RoughOcTree>::setVoxelColor(PointClo
   }
 }
 template <>
-void TemplatedOccupancyGridDisplay<octomap::RoughOcTreeStamped>::setVoxelColor(PointCloud::Point& newPoint, 
+void TemplatedOccupancyGridDisplay<octomap::RoughOcTreeStamped>::setVoxelColor(PointCloud::Point& newPoint,
                                                               octomap::RoughOcTreeStamped::NodeType& node,
                                                               double minZ, double maxZ)
 {
@@ -703,4 +703,3 @@ PLUGINLIB_EXPORT_CLASS( RoughOcTreeGridDisplay, rviz::Display)
 PLUGINLIB_EXPORT_CLASS( OcTreeGridDisplay, rviz::Display)
 PLUGINLIB_EXPORT_CLASS( ColorOcTreeGridDisplay, rviz::Display)
 PLUGINLIB_EXPORT_CLASS( OcTreeStampedGridDisplay, rviz::Display)
-
