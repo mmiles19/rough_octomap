@@ -28,6 +28,8 @@
   <build_depend>qtbase5-dev</build_depend>
   <build_depend>libqt5-core</build_depend>
   <build_depend>libqt5-widgets</build_depend>
+  
+  <build_depend>curvy_terrain_mapper</build_depend>
 
  <run_depend>roscpp</run_depend>
  <run_depend>visualization_msgs</run_depend>
