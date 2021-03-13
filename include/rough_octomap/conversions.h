@@ -41,44 +41,176 @@
 #include <octomap/octomap.h>
 #include <octomap_msgs/Octomap.h>
 #include <octomap/ColorOcTree.h>
-#include <octomap/RoughOcTree.h>
+#include <rough_octomap/RoughOcTree.h>
 
-// new conversion functions  
-namespace octomap_msgs{  
+// new conversion functions
+namespace octomap_msgs{
+  // Note: fullMsgDataToMap() deleted, potentially causes confusion
+  // and (silent) errors in deserialization
+
+  /**
+   * @brief Creates a new octree by deserializing from a message that contains the
+   * full map information (i.e., binary is false) and returns an AbstractOcTree*
+   * to it. You will need to free the memory when you're done.
+   */
+  static inline octomap::AbstractOcTree* fullMsgToMap(const Octomap& msg){
+    octomap::AbstractOcTree* tree = octomap::AbstractOcTree::createTree(msg.id, msg.resolution);
+    if (tree){
+      std::stringstream datastream;
+      if (msg.data.size() > 0){
+	datastream.write((const char*) &msg.data[0], msg.data.size());
+	tree->readData(datastream);
+      }
+    }
+
+    return tree;
+  }
+
+
+  template<class TreeType>
+  void readTree(TreeType* octree, const Octomap& msg){
+    std::stringstream datastream;
+    if (msg.data.size() > 0){
+      datastream.write((const char*) &msg.data[0], msg.data.size());
+      octree->readBinaryData(datastream);
+    }
+  }
+
+
   /**
    * @brief Creates a new octree by deserializing from msg,
    * e.g. from a message or service (binary: only free and occupied .bt file format).
    * This creates a new OcTree object and returns a pointer to it.
    * You will need to free the memory when you're done.
    */
-  static inline octomap::AbstractOcTree* binaryMsgToMap(const Octomap& msg){
-    if (!msg.binary)
-      return NULL;
+   static inline octomap::AbstractOcTree* binaryMsgToMap(const Octomap& msg){
+     if (!msg.binary)
+       return NULL;
 
-    octomap::AbstractOcTree* tree;
-    if (msg.id == "ColorOcTree"){
-      octomap::ColorOcTree* octree = new octomap::ColorOcTree(msg.resolution);    
-      readTree(octree, msg);
-      tree = octree;
-    }
-    else if (msg.id == "RoughOcTree"){
-      octomap::RoughOcTree* octree = new octomap::RoughOcTree(msg.resolution);    
-      readTree(octree, msg);
-      tree = octree;
-    }
-    else if (msg.id == "RoughOcTreeStamped"){
-      octomap::RoughOcTreeStamped* octree = new octomap::RoughOcTreeStamped(msg.resolution);    
-      readTree(octree, msg);
-      tree = octree;
-    } else {
-      octomap::OcTree* octree = new octomap::OcTree(msg.resolution);    
-      readTree(octree, msg);
-      tree = octree;
-    }
-    return tree;      
+     octomap::AbstractOcTree* tree;
+     if (msg.id == "ColorOcTree"){
+       octomap::ColorOcTree* octree = new octomap::ColorOcTree(msg.resolution);
+       readTree(octree, msg);
+       tree = octree;
+     }
+     else if (msg.id == "RoughOcTree"){
+       octomap::RoughOcTree* octree = new octomap::RoughOcTree(msg.resolution);
+       readTree(octree, msg);
+       tree = octree;
+     }
+     else if (msg.id == "RoughOcTreeStamped"){
+       octomap::RoughOcTreeStamped* octree = new octomap::RoughOcTreeStamped(msg.resolution);
+       readTree(octree, msg);
+       tree = octree;
+     } else {
+       octomap::OcTree* octree = new octomap::OcTree(msg.resolution);
+       readTree(octree, msg);
+       tree = octree;
+     }
+     return tree;
+   }
+
+  // Note: binaryMsgDataToMap() deleted, potentially causes confusion
+  // and (silent) errors in deserialization
+
+
+  /**
+   * \brief Convert an octomap representation to a new octree (full probabilities
+   * or binary). You will need to free the memory. Return NULL on error.
+   **/
+  static inline octomap::AbstractOcTree* msgToMap(const Octomap& msg){
+    if (msg.binary)
+      return binaryMsgToMap(msg);
+    else
+      return fullMsgToMap(msg);
   }
+
+  // conversions via stringstream
+
+  // TODO: read directly into buffer? see
+  // http://stackoverflow.com/questions/132358/how-to-read-file-content-into-istringstream
+
+  /**
+   * @brief Serialization of an octree into binary data e.g. for messages and services.
+   * Compact binary version (stores only max-likelihood free or occupied, .bt file format).
+   * The data will be much smaller if you call octomap.toMaxLikelihood() and octomap.prune()
+   * before.
+   * @return success of serialization
+   */
+  template <class OctomapT>
+  static inline bool binaryMapToMsgData(const OctomapT& octomap, std::vector<int8_t>& mapData){
+    std::stringstream datastream;
+    if (!octomap.writeBinaryConst(datastream))
+      return false;
+
+    std::string datastring = datastream.str();
+    mapData = std::vector<int8_t>(datastring.begin(), datastring.end());
+    return true;
+  }
+
+  /**
+   * @brief Serialization of an octree into binary data e.g. for messages and services.
+   * Full probability version (stores complete state of tree, .ot file format).
+   * The data will be much smaller if you call octomap.toMaxLikelihood() and octomap.prune()
+   * before.
+   * @return success of serialization
+   */
+  template <class OctomapT>
+  static inline bool fullMapToMsgData(const OctomapT& octomap, std::vector<int8_t>& mapData){
+    std::stringstream datastream;
+    if (!octomap.write(datastream))
+      return false;
+
+    std::string datastring = datastream.str();
+    mapData = std::vector<int8_t>(datastring.begin(), datastring.end());
+    return true;
+  }
+
+  /**
+   * @brief Serialization of an octree into binary data e.g. for messages and services.
+   * Compact binary version (stores only max-likelihood free or occupied, .bt file format).
+   * The data will be much smaller if you call octomap.toMaxLikelihood() and octomap.prune()
+   * before.
+   * @return success of serialization
+   */
+  template <class OctomapT>
+  static inline bool binaryMapToMsg(const OctomapT& octomap, Octomap& msg){
+    msg.resolution = octomap.getResolution();
+    msg.id = octomap.getTreeType();
+    msg.binary = true;
+
+    std::stringstream datastream;
+    if (!octomap.writeBinaryData(datastream))
+      return false;
+
+    std::string datastring = datastream.str();
+    msg.data = std::vector<int8_t>(datastring.begin(), datastring.end());
+    return true;
+  }
+
+  /**
+   * @brief Serialization of an octree into binary data e.g. for messages and services.
+   * Full probability version (stores complete state of tree, .ot file format).
+   * The data will be much smaller if you call octomap.toMaxLikelihood() and octomap.prune()
+   * before.
+   * @return success of serialization
+   */
+  template <class OctomapT>
+  static inline bool fullMapToMsg(const OctomapT& octomap, Octomap& msg){
+    msg.resolution = octomap.getResolution();
+    msg.id = octomap.getTreeType();
+    msg.binary = false;
+
+    std::stringstream datastream;
+    if (!octomap.writeData(datastream))
+      return false;
+
+    std::string datastring = datastream.str();
+    msg.data = std::vector<int8_t>(datastring.begin(), datastring.end());
+    return true;
+  }
+
 }
 
 
 #endif
-
