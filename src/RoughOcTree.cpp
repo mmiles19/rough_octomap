@@ -293,7 +293,7 @@ namespace octomap {
   RoughOcTreeNode* RoughOcTree::averageNodeRough(const OcTreeKey& key,
                                                  float rough) {
     RoughOcTreeNode* n = search(key);
-    if (n != 0) {
+    if (n != 0 /*&& !isnan(rough)*/) {
       this->changed_keys.insert(std::pair<OcTreeKey,bool>(key, false));
       if (n->isRoughSet()) {
         float prev_rough = n->getRough();
