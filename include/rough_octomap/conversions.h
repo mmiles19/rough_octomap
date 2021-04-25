@@ -58,9 +58,17 @@ namespace octomap_msgs{
     if (tree){
       std::stringstream datastream;
       if (msg.data.size() > 0){
-	datastream.write((const char*) &msg.data[0], msg.data.size());
-	tree->readData(datastream);
+        datastream.write((const char*) &msg.data[0], msg.data.size());
+        tree->readData(datastream);
       }
+      else
+      {
+        OCTOMAP_WARNING("fullMsgToMap received empty msg. Returning empty tree...\n");
+      }
+    }
+    else
+    {
+      OCTOMAP_ERROR("Unable to createTree in fullMsgToMap.\n");
     }
 
     return tree;
