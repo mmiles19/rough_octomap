@@ -179,6 +179,13 @@ namespace octomap {
 
     // uses gnuplot to plot a RGB histogram in EPS format
     void writeRoughHistogram(std::string filename);
+
+    // binary io overloaded from OcTreeBase
+    // std::istream& readBinaryData(std::istream &s);
+    // std::ostream& writeBinaryData(std::ostream &s) const;
+    std::istream& readBinaryNode(std::istream &s, RoughOcTreeNode* node);
+    std::ostream& writeBinaryNode(std::ostream &s, const RoughOcTreeNode* node) const;
+    float rough_binary_thres;
     
   protected:
     void updateInnerOccupancyRecurs(RoughOcTreeNode* node, unsigned int depth);

@@ -58,8 +58,8 @@ namespace octomap_msgs{
     if (tree){
       std::stringstream datastream;
       if (msg.data.size() > 0){
-	datastream.write((const char*) &msg.data[0], msg.data.size());
-	tree->readData(datastream);
+        datastream.write((const char*) &msg.data[0], msg.data.size());
+        tree->readData(datastream);
       }
     }
 

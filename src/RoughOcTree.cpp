@@ -34,7 +34,152 @@
 #include <rough_octomap/RoughOcTree.h>
 
 namespace octomap {
+  // binary io
 
+  // std::istream& RoughOcTree::readBinaryData(std::istream &s){
+  //   // tree needs to be newly created or cleared externally
+  //   if (this->root) {
+  //     OCTOMAP_ERROR_STR("Trying to read into an existing tree.");
+  //     return s;
+  //   }
+
+  //   this->root = new RoughOcTreeNode();
+  //   this->readBinaryNode(s, this->root);
+  //   this->size_changed = true;
+  //   this->tree_size = OcTreeBaseImpl<RoughOcTree,RoughOcTree>::calcNumNodes();  // compute number of nodes
+  //   return s;
+  // }
+
+  // std::ostream& RoughOcTree::writeBinaryData(std::ostream &s) const{
+  //   OCTOMAP_DEBUG("Writing %zu nodes to output stream...", this->size());
+  //   if (this->root)
+  //     this->writeBinaryNode(s, this->root);
+  //   return s;
+  // }
+
+  std::istream& RoughOcTree::readBinaryNode(std::istream &s, RoughOcTreeNode* node){
+
+    assert(node);
+
+    char childset1_char, childset2_char, childset3_char;
+    s.read((char*)&childset1_char, sizeof(char));
+    s.read((char*)&childset2_char, sizeof(char));
+    s.read((char*)&childset3_char, sizeof(char));
+
+    std::bitset<8> children[3];
+    children[0] = (unsigned long long) childset1_char;
+    children[1] = (unsigned long long) childset2_char;
+    children[2] = (unsigned long long) childset3_char;
+    auto children_access = [children](uint child, uint value){return children[(child*3+value)/8][(child*3+value)%8];}; // maps child and value indices to aligned char array, returns bitset reference
+
+    //     std::cout << "read:  "
+    //        << child1to4.to_string<char,std::char_traits<char>,std::allocator<char> >() << " "
+    //        << child5to8.to_string<char,std::char_traits<char>,std::allocator<char> >() << std::endl;
+
+
+    // inner nodes default to occupied
+    node->setLogOdds(this->clamping_thres_max);
+
+    for (unsigned int i=0; i<8; i++) {
+      if ((children_access(i,0) == 1) && (children_access(i,1) == 0)) {
+        // child is free leaf
+        this->createNodeChild(node, i);
+        this->getNodeChild(node, i)->setLogOdds(this->clamping_thres_min);
+      }
+      else if ((children_access(i,0) == 0) && (children_access(i,1) == 1)) {
+        // child is occupied leaf
+        this->createNodeChild(node, i);
+        this->getNodeChild(node, i)->setLogOdds(this->clamping_thres_max);
+        if (children_access(i,2) == 1) { // if binarized child is rough, set rough value to binary thres
+          this->getNodeChild(node, i)->setRough(this->rough_binary_thres);
+        }
+        else { // else, set rough value to zero
+          this->getNodeChild(node, i)->setRough(0.0f);
+        }
+      }
+      else if ((children_access(i,0) == 1) && (children_access(i,1) == 1)) {
+        // child has children
+        this->createNodeChild(node, i);
+        this->getNodeChild(node, i)->setLogOdds(-200.); // child is unkown, we leave it uninitialized
+      }
+    }
+
+    // read children's children and set the label
+    for (unsigned int i=0; i<8; i++) {
+      if (this->nodeChildExists(node, i)) {
+        RoughOcTreeNode* child = this->getNodeChild(node, i);
+        if (fabs(child->getLogOdds() + 200.)<1e-3) { // has children?
+          readBinaryNode(s, child);
+          child->setLogOdds(child->getMaxChildLogOdds());
+        }
+      } // end if child exists
+    } // end for children
+
+    return s;
+  }
+
+  std::ostream& RoughOcTree::writeBinaryNode(std::ostream &s, const RoughOcTreeNode* node) const{
+
+    assert(node);
+
+    // 3 bits for each children, 8 children per node -> 24 bits
+    // std::bitset<8> childset1; // 1A 1B 1R 2A 2B 2R 3A 3B
+    // std::bitset<8> childset2;  // 3R 4A 4B 4R 5A 5B 5R 6A
+    // std::bitset<8> childset3;   // 6B 6R 7A 7B 7R 8A 8B 8R
+    std::bitset<8> children[3];
+    auto children_access = [&children] (uint child, uint value) {return children[(child*3+value)/8][(child*3+value)%8];}; // maps child and value indices to aligned char array, returns bitset reference
+
+    // 10* : child is free node
+    // 01* : child is occupied node
+    // 00* : child is unkown node
+    // 11* : child has children
+    // **1 : child is rough
+    // **0 : child is traversable or traversability unknown (should be treated similarly)
+
+    // speedup: only set bits to 1, rest is init with 0 anyway,
+    //          can be one logic expression per bit
+
+    for (unsigned int i=0; i<8; i++) {
+      if (this->nodeChildExists(node, i)) {
+        const RoughOcTreeNode* child = this->getNodeChild(node, i);
+        if      (this->nodeHasChildren(child))  { children_access(i,0) = 1; children_access(i,1) = 1; }
+        else if (this->isNodeOccupied(child)) { 
+          children_access(i,0) = 0; children_access(i,1) = 1; 
+          if (child->getRough()>this->rough_binary_thres) { // fails if rough is nan or less than or equal to rough binary threshold
+            children_access(i,2) = 1; // set rough bit 
+          }
+        }
+        else { children_access(i,0) = 1; children_access(i,1) = 0; }
+      }
+      else {
+        children_access(i,0) = 0; children_access(i,1) = 0; // shouldn't be necessary since default value is 0?
+      }
+    }
+
+    //     std::cout << "wrote: "
+    //        << child1to4.to_string<char,std::char_traits<char>,std::allocator<char> >() << " "
+    //        << child5to8.to_string<char,std::char_traits<char>,std::allocator<char> >() << std::endl;
+
+    char childset1_char = (char) children[0].to_ulong();
+    char childset2_char = (char) children[1].to_ulong();
+    char childset3_char = (char) children[2].to_ulong();
+
+    s.write((char*)&childset1_char, sizeof(char));
+    s.write((char*)&childset2_char, sizeof(char));
+    s.write((char*)&childset3_char, sizeof(char));
+
+    // write children's children
+    for (unsigned int i=0; i<8; i++) {
+      if (this->nodeChildExists(node, i)) {
+        const RoughOcTreeNode* child = this->getNodeChild(node, i);
+        if (this->nodeHasChildren(child)) {
+          writeBinaryNode(s, child);
+        }
+      }
+    }
+
+    return s;
+  }
 
   // node implementation  --------------------------------------
   std::ostream& RoughOcTreeNode::writeData(std::ostream &s) const {
@@ -85,6 +230,7 @@ namespace octomap {
   RoughOcTree::RoughOcTree(double in_resolution)
   : OccupancyOcTreeBase<RoughOcTreeNode>(in_resolution) {
     roughOcTreeMemberInit.ensureLinking();
+    rough_binary_thres = 0.99;
   }
 
   float RoughOcTree::getNodeRough(const OcTreeKey& key) {
