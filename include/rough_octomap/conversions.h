@@ -111,6 +111,7 @@ namespace octomap_msgs{
        readTree(octree, msg);
        tree = octree;
      } else {
+       OCTOMAP_WARNING("Failed to convert Octomap msg to OcTree of type %s. Reverting to OcTree.", msg.id.c_str());
        octomap::OcTree* octree = new octomap::OcTree(msg.resolution);
        readTree(octree, msg);
        tree = octree;
