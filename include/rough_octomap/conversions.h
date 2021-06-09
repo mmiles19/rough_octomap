@@ -77,6 +77,7 @@ namespace octomap_msgs{
 
   template<class TreeType>
   void readTree(TreeType* octree, const Octomap& msg){
+    // printf("readtree msgsize %d\n",msg.data.size());
     std::stringstream datastream;
     if (msg.data.size() > 0){
       datastream.write((const char*) &msg.data[0], msg.data.size());
@@ -92,6 +93,7 @@ namespace octomap_msgs{
    * You will need to free the memory when you're done.
    */
    static inline octomap::AbstractOcTree* binaryMsgToMap(const Octomap& msg){
+    // printf("binary msgtomap\n");
      if (!msg.binary)
        return NULL;
 
@@ -102,6 +104,7 @@ namespace octomap_msgs{
        tree = octree;
      }
      else if (msg.id == "RoughOcTree"){
+        // printf("rough binary msgtomap\n");
        octomap::RoughOcTree* octree = new octomap::RoughOcTree(msg.resolution);
        readTree(octree, msg);
        tree = octree;
@@ -128,6 +131,7 @@ namespace octomap_msgs{
    * or binary). You will need to free the memory. Return NULL on error.
    **/
   static inline octomap::AbstractOcTree* msgToMap(const Octomap& msg){
+    // printf("msgtomap\n");
     if (msg.binary)
       return binaryMsgToMap(msg);
     else
@@ -189,8 +193,11 @@ namespace octomap_msgs{
     msg.binary = true;
 
     std::stringstream datastream;
-    if (!octomap.writeBinaryData(datastream))
+    // ROS_INFO("Writing binary data.");
+    if (!octomap.writeBinaryData(datastream)) {
+      ROS_ERROR("writeBinaryData failed.");
       return false;
+    }
 
     std::string datastring = datastream.str();
     msg.data = std::vector<int8_t>(datastring.begin(), datastring.end());

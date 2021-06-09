@@ -1,8 +1,9 @@
 #ifndef OCTOMAP_ROUGH_OCTREE_H
 #define OCTOMAP_ROUGH_OCTREE_H
 
-
 #include <iostream>
+#include <boost/dynamic_bitset.hpp>
+
 #include <octomap/OcTreeNode.h>
 #include <octomap/OcTreeStamped.h>
 #include <octomap/OccupancyOcTreeBase.h>
@@ -61,7 +62,14 @@ inline RGBColor getBWColor(float ratio)
 }
 
 namespace octomap {
-  
+  enum RoughBinaryEncodingMode {
+    THRESHOLDING,
+    BINNING
+  };
+}
+
+namespace octomap {
+
   // forward declaraton for "friend"
   class RoughOcTree;
   
@@ -181,11 +189,18 @@ namespace octomap {
     void writeRoughHistogram(std::string filename);
 
     // binary io overloaded from OcTreeBase
-    // std::istream& readBinaryData(std::istream &s);
-    // std::ostream& writeBinaryData(std::ostream &s) const;
+    std::istream& readBinaryData(std::istream &s);
+    std::ostream& writeBinaryData(std::ostream &s) const;
     std::istream& readBinaryNode(std::istream &s, RoughOcTreeNode* node);
     std::ostream& writeBinaryNode(std::ostream &s, const RoughOcTreeNode* node) const;
-    float rough_binary_thres;
+    std::istream& readBinaryNodeViaThresholding(std::istream &s, RoughOcTreeNode* node);
+    std::ostream& writeBinaryNodeViaThresholding(std::ostream &s, const RoughOcTreeNode* node) const;
+    std::istream& readBinaryNodeViaBinning(std::istream &s, RoughOcTreeNode* node);
+    std::ostream& writeBinaryNodeViaBinning(std::ostream &s, const RoughOcTreeNode* node) const;
+
+    RoughBinaryEncodingMode binary_encoding_mode;
+    float rough_binary_thres; // must be between 0 and 1
+    uint num_binary_bins; // must be power of 2
     
   protected:
     void updateInnerOccupancyRecurs(RoughOcTreeNode* node, unsigned int depth);
