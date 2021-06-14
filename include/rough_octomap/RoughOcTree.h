@@ -154,11 +154,23 @@ namespace octomap {
       return setNodeRough(key,rough);
     }
 
+    RoughOcTreeNode* setNodeRough(point3d pt, float rough) {
+      OcTreeKey key;
+      if (!this->coordToKeyChecked(pt, key)) return NULL;
+      return setNodeRough(key,rough);
+    }
+
     float getNodeRough(const OcTreeKey& key);
 
     float getNodeRough(float x, float y, float z) {
       OcTreeKey key;
       if (!this->coordToKeyChecked(point3d(x,y,z), key)) return NAN;
+      return getNodeRough(key);
+    }
+
+    float getNodeRough(point3d pt) {
+      OcTreeKey key;
+      if (!this->coordToKeyChecked(pt, key)) return NAN;
       return getNodeRough(key);
     }
 
@@ -172,6 +184,12 @@ namespace octomap {
       return averageNodeRough(key,rough);
     }
 
+    RoughOcTreeNode* averageNodeRough(point3d pt, float rough) {
+      OcTreeKey key;
+      if (!this->coordToKeyChecked(pt, key)) return NULL;
+      return averageNodeRough(key,rough);
+    }
+
     // integrate color measurement at given key or coordinate. Average with previous color
     RoughOcTreeNode* integrateNodeRough(const OcTreeKey& key, float rough);
     
@@ -179,6 +197,12 @@ namespace octomap {
                                       float z, float rough) {
       OcTreeKey key;
       if (!this->coordToKeyChecked(point3d(x,y,z), key)) return NULL;
+      return integrateNodeRough(key,rough);
+    }
+
+    RoughOcTreeNode* integrateNodeRough(point3d pt, float rough) {
+      OcTreeKey key;
+      if (!this->coordToKeyChecked(pt, key)) return NULL;
       return integrateNodeRough(key,rough);
     }
 
@@ -319,11 +343,23 @@ namespace octomap {
       return setNodeRough(key,rough);
     }
 
+    RoughOcTreeNodeStamped* setNodeRough(point3d pt, float rough) {
+      OcTreeKey key;
+      if (!this->coordToKeyChecked(pt, key)) return NULL;
+      return setNodeRough(key,rough);
+    }
+
     float getNodeRough(const OcTreeKey& key);
 
     float getNodeRough(float x, float y, float z) {
       OcTreeKey key;
       if (!this->coordToKeyChecked(point3d(x,y,z), key)) return NAN;
+      return getNodeRough(key);
+    }
+
+    float getNodeRough(point3d pt) {
+      OcTreeKey key;
+      if (!this->coordToKeyChecked(pt, key)) return NAN;
       return getNodeRough(key);
     }
 
@@ -337,6 +373,12 @@ namespace octomap {
       return averageNodeRough(key,rough);
     }
 
+    RoughOcTreeNodeStamped* averageNodeRough(point3d pt, float rough) {
+      OcTreeKey key;
+      if (!this->coordToKeyChecked(pt, key)) return NULL;
+      return averageNodeRough(key,rough);
+    }
+
     // integrate color measurement at given key or coordinate. Average with previous color
     RoughOcTreeNodeStamped* integrateNodeRough(const OcTreeKey& key, float rough);
     
@@ -347,11 +389,30 @@ namespace octomap {
       return integrateNodeRough(key,rough);
     }
 
+    RoughOcTreeNodeStamped* integrateNodeRough(point3d pt, float rough) {
+      OcTreeKey key;
+      if (!this->coordToKeyChecked(pt, key)) return NULL;
+      return integrateNodeRough(key,rough);
+    }
+
     // update inner nodes, sets color to average child color
     void updateInnerOccupancy();
 
     // uses gnuplot to plot a RGB histogram in EPS format
     void writeRoughHistogram(std::string filename);
+
+    std::istream& readBinaryData(std::istream &s);
+    std::ostream& writeBinaryData(std::ostream &s) const;
+    std::istream& readBinaryNode(std::istream &s, RoughOcTreeNodeStamped* node);
+    std::ostream& writeBinaryNode(std::ostream &s, const RoughOcTreeNodeStamped* node) const;
+    std::istream& readBinaryNodeViaThresholding(std::istream &s, RoughOcTreeNodeStamped* node);
+    std::ostream& writeBinaryNodeViaThresholding(std::ostream &s, const RoughOcTreeNodeStamped* node) const;
+    std::istream& readBinaryNodeViaBinning(std::istream &s, RoughOcTreeNodeStamped* node);
+    std::ostream& writeBinaryNodeViaBinning(std::ostream &s, const RoughOcTreeNodeStamped* node) const;
+
+    RoughBinaryEncodingMode binary_encoding_mode;
+    float rough_binary_thres; // must be between 0 and 1
+    uint num_binary_bins; // must be power of 2
     
   protected:
     void updateInnerOccupancyRecurs(RoughOcTreeNodeStamped* node, unsigned int depth);
