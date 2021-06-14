@@ -55,6 +55,9 @@ set(SOURCE_FILES
 add_library(${PROJECT_NAME} ${SOURCE_FILES})
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
 
+add_executable(octomap_converter src/octomap_converter.cpp)
+target_link_libraries(octomap_converter ${PROJECT_NAME})
+
 install(DIRECTORY include/${PROJECT_NAME}/
         DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
         PATTERN ".svn" EXCLUDE)
