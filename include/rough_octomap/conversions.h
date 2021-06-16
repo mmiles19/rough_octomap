@@ -97,24 +97,20 @@ namespace octomap_msgs{
      if (!msg.binary)
        return NULL;
 
+     int bin_pos = msg.id.find("RoughOcTree-");
      octomap::AbstractOcTree* tree;
      if (msg.id == "ColorOcTree"){
        octomap::ColorOcTree* octree = new octomap::ColorOcTree(msg.resolution);
        readTree(octree, msg);
        tree = octree;
      }
-     else if (msg.id == "RoughOcTree"){
-        // printf("rough binary msgtomap\n");
+     else if (bin_pos != std::string::npos){
        octomap::RoughOcTree* octree = new octomap::RoughOcTree(msg.resolution);
-       readTree(octree, msg);
-       tree = octree;
-     }
-     else if (msg.id == "RoughOcTreeStamped"){
-       octomap::RoughOcTreeStamped* octree = new octomap::RoughOcTreeStamped(msg.resolution);
+       // Set the number of bins, embedded in the id
+       octree->setNumBins(stoi(msg.id.substr(bin_pos+12)));
        readTree(octree, msg);
        tree = octree;
      } else {
-       OCTOMAP_WARNING("Failed to convert Octomap msg to OcTree of type %s. Reverting to OcTree.", msg.id.c_str());
        octomap::OcTree* octree = new octomap::OcTree(msg.resolution);
        readTree(octree, msg);
        tree = octree;
@@ -179,6 +175,28 @@ namespace octomap_msgs{
     return true;
   }
 
+  // This is just to deal with the fact that only RoughOctomap has the getNumBins function
+  template <typename T>
+    class isRough {
+      private:
+        typedef char YesType[1];
+        typedef char NoType[2];
+
+        template <typename C> static YesType& test(decltype(&C::getNumBins));
+        template <typename C> static NoType& test(...);
+
+      public:
+        enum { value = sizeof(test<T>(0)) == sizeof(YesType) };
+    };
+
+  template<typename T>
+    typename std::enable_if<isRough<T>::value, std::string>::type
+    Suffix(T* t) {
+      return "-" + std::to_string(t->getNumBins());
+    }
+
+  std::string Suffix(...) { return ""; }
+
   /**
    * @brief Serialization of an octree into binary data e.g. for messages and services.
    * Compact binary version (stores only max-likelihood free or occupied, .bt file format).
@@ -189,7 +207,7 @@ namespace octomap_msgs{
   template <class OctomapT>
   static inline bool binaryMapToMsg(const OctomapT& octomap, Octomap& msg){
     msg.resolution = octomap.getResolution();
-    msg.id = octomap.getTreeType();
+    msg.id = octomap.getTreeType() + Suffix(&octomap);
     msg.binary = true;
 
     std::stringstream datastream;
