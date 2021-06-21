@@ -99,6 +99,11 @@ namespace octomap {
     inline char getAgent() const { return agent; }
     inline void setAgent(char a) { this->agent = a; }
 
+    // Potential future use but would have to publish the agent data in the messages, which we don't currently
+    RGBColor getAgentColor(/*float rough_=NAN*/) {
+      return getBWColor(getRough());
+    }
+
     RGBColor getRoughColor(/*float rough_=NAN*/) {
       return getBWColor(getRough());
     }

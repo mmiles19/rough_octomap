@@ -42,9 +42,6 @@
 #include <message_filters/subscriber.h>
 
 #include <octomap_msgs/Octomap.h>
-
-#include <octomap/OcTreeStamped.h>
-#include <octomap/ColorOcTree.h>
 #include <rough_octomap/RoughOcTree.h>
 
 #include <rviz/display.h>
@@ -59,7 +56,7 @@ class EnumProperty;
 class FloatProperty;
 }
 
-namespace octomap_rviz_plugin
+namespace rough_octomap_rviz_plugin
 {
 
 class OccupancyGridDisplay : public rviz::Display
@@ -142,6 +139,6 @@ protected:
   bool checkType(std::string type_id);
 };
 
-} // namespace octomap_rviz_plugin
+} // namespace rough_octomap_rviz_plugin
 
 #endif //RVIZ_OCCUPANCY_GRID_DISPLAY_H
