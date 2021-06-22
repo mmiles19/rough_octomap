@@ -79,22 +79,26 @@ namespace octomap {
     friend class RoughOcTree; // needs access to node children (inherited)
 
   public:
-    RoughOcTreeNode() : OcTreeNode(), rough(NAN), agent(0) {}
+    RoughOcTreeNode() : OcTreeNode(), rough(NAN), is_stair(false), agent(0) {}
 
     RoughOcTreeNode(const RoughOcTreeNode& rhs) : OcTreeNode(rhs), rough(rhs.rough), agent(rhs.agent) {}
 
     bool operator==(const RoughOcTreeNode& rhs) const{
-      return (rhs.value == value && rhs.rough == rough && rhs.agent == agent);
+      return (rhs.value == value && rhs.rough == rough && rhs.is_stair == is_stair && rhs.agent == agent);
     }
 
     void copyData(const RoughOcTreeNode& from){
       OcTreeNode::copyData(from);
       this->rough =  from.getRough();
+      this->is_stair =  from.isStair();
       this->agent =  from.getAgent();
     }
 
     inline float getRough() const { return rough; }
     inline void  setRough(float c) {this->rough = c; }
+
+    inline float isStair() const { return is_stair; }
+    inline void  setStair(bool s) {this->is_stair = s; }
 
     inline char getAgent() const { return agent; }
     inline void setAgent(char a) { this->agent = a; }
@@ -118,6 +122,7 @@ namespace octomap {
 
   protected:
     float rough;
+    bool is_stair;
     char agent;
   };
 
@@ -170,6 +175,22 @@ namespace octomap {
       OcTreeKey key;
       if (!this->coordToKeyChecked(pt, key)) return NULL;
       return setNodeAgent(key,agent);
+    }
+
+    // Set is_stair for the given node by key or coordinate
+    RoughOcTreeNode* setNodeIsStair(const OcTreeKey& key, bool is_stair);
+
+    RoughOcTreeNode* setNodeIsStair(float x, float y,
+                                 float z, bool is_stair) {
+      OcTreeKey key;
+      if (!this->coordToKeyChecked(point3d(x,y,z), key)) return NULL;
+      return setNodeIsStair(key,is_stair);
+    }
+
+    RoughOcTreeNode* setNodeIsStair(point3d pt, bool is_stair) {
+      OcTreeKey key;
+      if (!this->coordToKeyChecked(pt, key)) return NULL;
+      return setNodeIsStair(key,is_stair);
     }
 
     // set node roughness at given key or coordinate. Replaces previous roughness.
