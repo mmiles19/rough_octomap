@@ -396,13 +396,16 @@ void TemplatedOccupancyGridDisplay<octomap::RoughOcTree>::setVoxelColor(PointClo
 {
   OctreeVoxelColorMode octree_color_mode = static_cast<OctreeVoxelColorMode>(octree_coloring_property_->getOptionInt());
   float cell_probability;
+  RGBColor nodeColor;
   switch (octree_color_mode)
   {
     case OCTOMAP_AGENT_COLOR:
-      newPoint.setColor(node.getAgentColor().r, node.getAgentColor().g, node.getAgentColor().b);
+      nodeColor = node.getAgentColor(newPoint.position.z, minZ, maxZ, false);
+      newPoint.setColor(nodeColor.r, nodeColor.g, nodeColor.b);
       break;
     case OCTOMAP_ROUGH_COLOR:
-      newPoint.setColor(node.getRoughColor().r, node.getRoughColor().g, node.getRoughColor().b);
+      nodeColor = node.getRoughColor();
+      newPoint.setColor(nodeColor.r, nodeColor.g, nodeColor.b);
       break;
     case OCTOMAP_Z_AXIS_COLOR:
       setColor(newPoint.position.z, minZ, maxZ, color_factor_, newPoint);
@@ -475,6 +478,8 @@ void TemplatedOccupancyGridDisplay<OcTreeType>::incomingMessageCallback(const oc
   double minX, minY, minZ, maxX, maxY, maxZ;
   octomap->getMetricMin(minX, minY, minZ);
   octomap->getMetricMax(maxX, maxY, maxZ);
+  // Make sure the bottom is a little lower to reduce drastic color changes at the beginning
+  minZ = std::min(-1.0, minZ);
 
   // reset rviz pointcloud classes
   for (std::size_t i = 0; i < max_octree_depth_; ++i)

@@ -9,40 +9,47 @@
 #include <octomap/OccupancyOcTreeBase.h>
 
 struct RGBColor{ float r, g, b; };
-inline RGBColor getRGBColor(float ratio)
-{
-    RGBColor out;
-    if(isnan(ratio))
-    {
-      out.r = 0.0;
-      out.g = 0.0;
-      out.b = 0.0;
-    }
-    else
-    {
-      //we want to normalize ratio so that it fits in to 6 regions
-      //where each region is 256 units long
-      int normalized = int(ratio * 255 * 5);
+inline RGBColor HSVtoRGB(double h, double s, double v) {
+  RGBColor color;
+  int i;
+  double m, n, p, f;
 
-      //find the distance to the start of the closest region
-      int x = normalized % 256;
+  h -= floor(h);
+  h *= 6;
+  i = floor(h);
+  f = h - i;
+  m = v * (1 - s);
+  n = v * (1 - s * f);
+  p = v * (1 - s * (1 - f));
 
-      int red = 0, grn = 0, blu = 0;
-      switch(normalized / 256)
-      {
-          case 0: red = 255;      grn = x;        blu = 0;       break;//red
-          case 1: red = 255 - x;  grn = 255;      blu = 0;       break;//yellow
-          case 2: red = 0;        grn = 255;      blu = x;       break;//green
-          case 3: red = 0;        grn = 255 - x;  blu = 255;     break;//cyan
-          case 4: red = x;        grn = 0;        blu = 255;     break;//blue
-      }
+  switch (i) {
+    case 6:
+    case 0:
+      color.r = v; color.g = p; color.b = m;
+      break;
+    case 1:
+      color.r = n; color.g = v; color.b = m;
+      break;
+    case 2:
+      color.r = m; color.g = v; color.b = p;
+      break;
+    case 3:
+      color.r = m; color.g = n; color.b = v;
+      break;
+    case 4:
+      color.r = p; color.g = m; color.b = v;
+      break;
+    case 5:
+      color.r = v; color.g = m; color.b = n;
+      break;
+    default:
+      color.r = 1; color.g = 0.5; color.b = 0.5;
+      break;
+  }
 
-      out.r = (float)red/255.0;
-      out.g = (float)grn/255.0;
-      out.b = (float)blu/255.0;
-    }
-    return out;
+  return color;
 }
+
 inline RGBColor getBWColor(float ratio)
 {
     RGBColor out;
@@ -99,9 +106,85 @@ namespace octomap {
     inline char getAgent() const { return agent; }
     inline void setAgent(char a) { this->agent = a; }
 
-    // Potential future use but would have to publish the agent data in the messages, which we don't currently
-    RGBColor getAgentColor(/*float rough_=NAN*/) {
-      return getBWColor(getRough());
+    // Only used for markers right now but can be used for binary/full messages if the agent field is included
+    RGBColor getAgentColor(double atZ, double minZ, double maxZ, bool adjustAgent) {
+      double h, s, v, sb, vb, sm, vm, split;
+      char agent = getAgent();
+      if (adjustAgent && (agent > 0)) agent--;
+      // Find the standardized height of the voxel
+      double z = std::min(std::max((atZ - minZ) / (maxZ - minZ), 0.0), 1.0);
+
+      // Restrict the agents to our preselected colors
+      agent = agent % 6;
+      sb = 0.2;
+      switch (agent) {
+        case 0:
+          // Black / Green
+          h = 0.47;
+          sb = 0.1;
+          vb = 0.0;
+          break;
+        case 1:
+          // Dark Blue
+          h = 0.666;
+          vb = 0.55;
+          break;
+        case 2:
+          // Purple
+          h = 0.833;
+          vb = 0.44;
+          break;
+        case 3:
+          // Green
+          h = 0.422;
+          vb = 0.53;
+          break;
+        case 4:
+          // Yellow
+          h = 0.133;
+          vb = 0.48;
+          break;
+        case 5:
+          // Red
+          h = 0.0;
+          vb = 0.55;
+          break;
+        case 6:
+          // Light Blue
+          h = 0.544;
+          vb = 0.42;
+          break;
+      }
+
+      // Multipliers
+      sm = 1.0 - sb;
+      vm = 1.0 - vb;
+
+      // Build HSV color
+      // Center the hue around 0
+      h = h + (z - 0.5) * (1.0 / 6.0);
+
+      if (agent == 0) {
+        // For merged maps, slowly increase value and decrease saturation to bottom
+        s = sb + (1 - z) * sm;
+        v = z * z;
+      } else {
+        // For regular agents, raise saturation, then raise value, then lower saturation
+        split = 1.0 / 3.0;
+        if (z < split) {
+          s = sb + (z / split) * sm;
+          v = vb;
+        } else if (z < split * 2) {
+          s = 1.0;
+          v = vb + ((z - split) / split) * vm;
+        } else {
+          s = sb + (1 - (z - 2 * split) / split) * sm;
+          v = 1.0;
+        }
+      }
+
+      // Convert the HSV to RGB
+      return HSVtoRGB(h, s, v);
     }
 
     RGBColor getRoughColor(/*float rough_=NAN*/) {
