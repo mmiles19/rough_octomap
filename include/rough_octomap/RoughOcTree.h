@@ -50,7 +50,7 @@ inline RGBColor HSVtoRGB(double h, double s, double v) {
   return color;
 }
 
-inline RGBColor getBWColor(float ratio)
+inline RGBColor ratioToBW(float ratio)
 {
     RGBColor out;
     if(isnan(ratio))
@@ -64,6 +64,41 @@ inline RGBColor getBWColor(float ratio)
       out.r = ratio;
       out.g = ratio;
       out.b = ratio;
+    }
+    return out;
+}
+
+inline RGBColor ratioToRGB(float ratio)
+{
+    RGBColor out;
+    if(isnan(ratio))
+    {
+      out.r = 0.0;
+      out.g = 0.0;
+      out.b = 0.0;
+    }
+    else
+    {
+      //we want to normalize ratio so that it fits in to 6 regions
+      //where each region is 256 units long
+      int normalized = int(ratio * 255 * 5);
+
+      //find the distance to the start of the closest region
+      int x = normalized % 256;
+
+      int red = 0, grn = 0, blu = 0;
+      switch(normalized / 256)
+      {
+          case 0: red = 255;      grn = x;        blu = 0;       break;//red
+          case 1: red = 255 - x;  grn = 255;      blu = 0;       break;//yellow
+          case 2: red = 0;        grn = 255;      blu = x;       break;//green
+          case 3: red = 0;        grn = 255 - x;  blu = 255;     break;//cyan
+          case 4: red = x;        grn = 0;        blu = 255;     break;//blue
+      }
+
+      out.r = (float)red/255.0;
+      out.g = (float)grn/255.0;
+      out.b = (float)blu/255.0;
     }
     return out;
 }
@@ -188,7 +223,8 @@ namespace octomap {
     }
 
     RGBColor getRoughColor(/*float rough_=NAN*/) {
-      return getBWColor(getRough());
+      return ratioToBW(getRough());
+      // return ratioToRGB(getRough());
     }
 
     // has any color been integrated? (pure white is very unlikely...)
