@@ -74,11 +74,46 @@ namespace octomap {
     }
   }
 
-
   void RoughOcTreeNode::updateRoughChildren() {
     rough = getAverageChildRough();
   }
 
+  float RoughOcTreeNode::getMeanChildStairLogOdds() const{
+    double mean = 0;
+    uint8_t c = 0;
+    if (children !=NULL){
+      for (unsigned int i=0; i<8; i++) {
+        if (children[i] != NULL) {
+          mean += static_cast<RoughOcTreeNode*>(children[i])->getStairProbability(); // TODO check if works generally
+          ++c;
+        }
+      }
+    }
+    
+    if (c > 0)
+      mean /= (double) c;
+
+    return (float)log(mean/(1-mean));
+  }
+
+  float RoughOcTreeNode::getMaxChildStairLogOdds() const{
+    float max = -std::numeric_limits<float>::max();
+    
+    if (children !=NULL){
+      for (unsigned int i=0; i<8; i++) {
+        if (children[i] != NULL) {
+          float l = static_cast<RoughOcTreeNode*>(children[i])->getStairLogOdds(); // TODO check if works generally
+          if (l > max)
+            max = l;
+        }
+      }
+    }
+    return max;
+  }
+
+  void RoughOcTreeNode::addStairValue(const float& logOdds) {
+    stair_logodds += logOdds;
+  }
 
   // tree implementation  --------------------------------------
   RoughOcTree::RoughOcTree(double in_resolution)
@@ -209,6 +244,105 @@ namespace octomap {
     return n;
   }
 
+  RoughOcTreeNode* RoughOcTree::updateNodeStairs(const OcTreeKey& key, bool is_stairs) {
+    float logOdds = this->prob_miss_log;
+    if (is_stairs)
+      logOdds = this->prob_hit_log;
+
+    return updateNodeStairs(key, logOdds);
+  }
+
+  RoughOcTreeNode* RoughOcTree::updateNodeStairs(const OcTreeKey& key, float log_odds_update) {
+    // early abort (no change will happen).
+    // may cause an overhead in some configuration, but more often helps
+    RoughOcTreeNode* leaf = this->search(key);
+    // no change: node already at threshold
+    if (leaf
+        && ((log_odds_update >= 0 && leaf->getStairLogOdds() >= this->clamping_thres_max)
+        || ( log_odds_update <= 0 && leaf->getStairLogOdds() <= this->clamping_thres_min)))
+    {
+      return leaf;
+    }
+
+    if (this->root == NULL){
+      return leaf;
+    }
+
+    return updateNodeStairsRecurs(this->root, key, 0, log_odds_update);
+  }
+
+  RoughOcTreeNode* RoughOcTree::updateNodeStairsRecurs(RoughOcTreeNode* node, const OcTreeKey& key,
+                                                    unsigned int depth, const float& log_odds_update) {
+    assert(node);
+
+    // follow down to last level
+    if (depth < this->tree_depth) {
+      unsigned int pos = computeChildIdx(key, this->tree_depth -1 - depth);
+      if (!this->nodeChildExists(node, pos)) {
+        // child does not exist, but maybe it's a pruned node?
+        if (!this->nodeHasChildren(node) ) {
+          // current node does not have children AND it is not a new node
+          // -> expand pruned node
+          this->expandNode(node);
+        }
+        else {
+          // not a pruned node, create requested child
+          // this->creaeNodeChild(node, pos);
+          // created_node = ttrue;
+        }
+      }
+
+      // if (lazy_eval)
+      //   return updateNodeRecurs(this->getNodeChild(node, pos), created_node, key, depth+1, log_odds_update, lazy_eval);
+      // else 
+      {
+        RoughOcTreeNode* retval = updateNodeStairsRecurs(this->getNodeChild(node, pos), key, depth+1, log_odds_update);
+        // prune node if possible, otherwise set own probability
+        // note: combining both did not lead to a speedup!
+        if (this->pruneNode(node)){
+          // return pointer to current parent (pruned), the just updated node no longer exists
+          retval = node;
+        } else{
+          node->updateStairChildren();
+        }
+
+        return retval;
+      }
+    }
+
+    // at last level, update node, end of recursion
+    else {
+      // if (use_change_detection) {
+      //   bool occBefore = this->isNodeOccupied(node);
+      //   updateNodeLogOdds(node, log_odds_update);
+
+      //   if (node_just_created){  // new node
+      //     changed_keys.insert(std::pair<OcTreeKey,bool>(key, true));
+      //   } else if (occBefore != this->isNodeOccupied(node)) {  // occupancy changed, track it
+      //     KeyBoolMap::iterator it = changed_keys.find(key);
+      //     if (it == changed_keys.end())
+      //       changed_keys.insert(std::pair<OcTreeKey,bool>(key, false));
+      //     else if (it->second == false)
+      //       changed_keys.erase(it);
+      //   }
+      // } else {
+        updateNodeStairLogOdds(node, log_odds_update);
+      // }
+      return node;
+    }
+  }
+
+  void RoughOcTree::updateNodeStairLogOdds(RoughOcTreeNode* occupancyNode, const float& update) const {
+    occupancyNode->addStairValue(update);
+    if (occupancyNode->getStairLogOdds() < this->clamping_thres_min) {
+      occupancyNode->setStairLogOdds(this->clamping_thres_min);
+      return;
+    }
+    if (occupancyNode->getStairLogOdds() > this->clamping_thres_max) {
+      occupancyNode->setStairLogOdds(this->clamping_thres_max);
+    }
+  }
+
   void RoughOcTree::updateInnerOccupancy() {
     this->updateInnerOccupancyRecurs(this->root, 0);
   }
@@ -226,6 +360,7 @@ namespace octomap {
       }
       node->updateOccupancyChildren();
       node->updateRoughChildren();
+      node->updateStairChildren();
     }
   }
 

@@ -121,26 +121,31 @@ namespace octomap {
     friend class RoughOcTree; // needs access to node children (inherited)
 
   public:
-    RoughOcTreeNode() : OcTreeNode(), rough(NAN), is_stair(false), agent(0) {}
+    RoughOcTreeNode() : OcTreeNode(), rough(NAN), stair_logodds(0), agent(0) {}
 
-    RoughOcTreeNode(const RoughOcTreeNode& rhs) : OcTreeNode(rhs), rough(rhs.rough), agent(rhs.agent) {}
+    RoughOcTreeNode(const RoughOcTreeNode& rhs) : OcTreeNode(rhs), rough(rhs.rough), stair_logodds(rhs.stair_logodds), agent(rhs.agent) {}
 
     bool operator==(const RoughOcTreeNode& rhs) const{
-      return (rhs.value == value && rhs.rough == rough && rhs.is_stair == is_stair && rhs.agent == agent);
+      return (rhs.value == value && rhs.rough == rough && rhs.stair_logodds == stair_logodds && rhs.agent == agent);
     }
 
     void copyData(const RoughOcTreeNode& from){
       OcTreeNode::copyData(from);
       this->rough =  from.getRough();
-      this->is_stair =  from.isStair();
+      this->stair_logodds =  from.getStairLogOdds();
       this->agent =  from.getAgent();
     }
 
     inline float getRough() const { return rough; }
     inline void  setRough(float c) {this->rough = c; }
 
-    inline float isStair() const { return is_stair; }
-    inline void  setStair(bool s) {this->is_stair = s; }
+    inline float getStairLogOdds() const { return stair_logodds; }
+    inline void  setStairLogOdds(float s) {this->stair_logodds = s; }
+    inline float getStairProbability() const { return probability(stair_logodds); }
+    inline void updateStairChildren() { this->setStairLogOdds(this->getMaxChildStairLogOdds()); }
+    float getMeanChildStairLogOdds() const;
+    float getMaxChildStairLogOdds() const;
+    void addStairValue(const float& p);
 
     inline char getAgent() const { return agent; }
     inline void setAgent(char a) { this->agent = a; }
@@ -246,7 +251,7 @@ namespace octomap {
 
   protected:
     float rough;
-    bool is_stair;
+    float stair_logodds;
     char agent;
   };
 
@@ -301,21 +306,37 @@ namespace octomap {
       return setNodeAgent(key,agent);
     }
 
-    // Set is_stair for the given node by key or coordinate
-    RoughOcTreeNode* setNodeIsStair(const OcTreeKey& key, bool is_stair);
+    // Set stair values for the given node by key or coordinate
+    RoughOcTreeNode* setNodeStairValue(const OcTreeKey& key, float logodds);
 
-    RoughOcTreeNode* setNodeIsStair(float x, float y,
-                                 float z, bool is_stair) {
+    RoughOcTreeNode* setNodeStairValue(float x, float y, float z, float logodds) {
       OcTreeKey key;
       if (!this->coordToKeyChecked(point3d(x,y,z), key)) return NULL;
-      return setNodeIsStair(key,is_stair);
+      return setNodeStairValue(key,logodds);
     }
 
-    RoughOcTreeNode* setNodeIsStair(point3d pt, bool is_stair) {
+    RoughOcTreeNode* setNodeStairValue(point3d pt, float logodds) {
       OcTreeKey key;
       if (!this->coordToKeyChecked(pt, key)) return NULL;
-      return setNodeIsStair(key,is_stair);
+      return setNodeStairValue(key,logodds);
     }
+
+    /// queries whether a node is stairs according to the tree's parameter for "occupancy"
+    inline bool isNodeStairs(const RoughOcTreeNode* node) const{
+      return (node->getStairLogOdds() >= this->occ_prob_thres_log);
+    }
+
+    inline bool isNodeStairs(const RoughOcTreeNode& node) const{
+      return (node.getStairLogOdds() >= this->occ_prob_thres_log);
+    }
+
+    RoughOcTreeNode* updateNodeStairs(const OcTreeKey& key, float log_odds_update);
+    RoughOcTreeNode* updateNodeStairs(const point3d& value, float log_odds_update);
+    RoughOcTreeNode* updateNodeStairs(const OcTreeKey& key, bool is_stairs);
+    RoughOcTreeNode* updateNodeStairs(const point3d& value, bool is_stairs);
+    RoughOcTreeNode* updateNodeStairsRecurs(RoughOcTreeNode* node, const OcTreeKey& key,
+                                                    unsigned int depth, const float& log_odds_update);
+    void updateNodeStairLogOdds(RoughOcTreeNode* occupancyNode, const float& update) const;
 
     // set node roughness at given key or coordinate. Replaces previous roughness.
     RoughOcTreeNode* setNodeRough(const OcTreeKey& key, float rough);
