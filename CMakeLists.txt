@@ -8,7 +8,7 @@ set(PACKAGE_DEPENDENCIES
   std_srvs
   octomap_ros
   octomap_msgs
-  dynamic_reconfigure
+  rviz
 )
 
 find_package(catkin REQUIRED COMPONENTS ${PACKAGE_DEPENDENCIES})
@@ -16,9 +16,9 @@ find_package(catkin REQUIRED COMPONENTS ${PACKAGE_DEPENDENCIES})
 find_package(octomap REQUIRED)
 add_definitions(-DOCTOMAP_NODEBUGOUT)
 
-#find_package(Qt5 COMPONENTS Core Widgets REQUIRED)
-#set(QT_LIBRARIES Qt5::Widgets)
-#add_definitions(-DQT_NO_KEYWORDS)
+find_package(Qt5 COMPONENTS Core Widgets REQUIRED)
+set(QT_LIBRARIES Qt5::Widgets)
+add_definitions(-DQT_NO_KEYWORDS)
 
 include_directories(
   include
@@ -26,12 +26,10 @@ include_directories(
   ${OCTOMAP_INCLUDE_DIRS}
 )
 
-#QT5_WRAP_CPP(MOC_FILES
-#  include/rough_octomap/occupancy_grid_display.h
-#  OPTIONS -DBOOST_TT_HAS_OPERATOR_HPP_INCLUDED -DBOOST_LEXICAL_CAST_INCLUDED
-#)
-
-# generate_dynamic_reconfigure_options(cfg/MarbleMapping.cfg)
+QT5_WRAP_CPP(MOC_FILES
+  include/rough_octomap/occupancy_grid_display.h
+  OPTIONS -DBOOST_TT_HAS_OPERATOR_HPP_INCLUDED -DBOOST_LEXICAL_CAST_INCLUDED
+)
 
 catkin_package(
   INCLUDE_DIRS include ${catkin_INCLUDE_DIRS} ${OCTOMAP_INCLUDE_DIRS}
@@ -43,18 +41,18 @@ catkin_package(
 set(LINK_LIBS
   ${OCTOMAP_LIBRARIES}
   ${catkin_LIBRARIES}
-#  $(QT_LIBRARIES)
 )
 
-set(SOURCE_FILES
-  src/RoughOcTree.cpp
-#  src/occupancy_grid_display.cpp
-#  ${MOC_FILES}
-)
-
-add_library(${PROJECT_NAME} ${SOURCE_FILES})
+add_library(${PROJECT_NAME} src/RoughOcTree.cpp)
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
+
+add_library(rough_octomap_rviz_plugin src/occupancy_grid_display.cpp ${MOC_FILES})
+target_link_libraries(rough_octomap_rviz_plugin ${PROJECT_NAME} ${LINK_LIBS} ${QT_LIBRARIES})
 
 install(DIRECTORY include/${PROJECT_NAME}/
         DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
         PATTERN ".svn" EXCLUDE)
+
+install(FILES plugin_description.xml
+        DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)

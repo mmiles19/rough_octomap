@@ -266,9 +266,7 @@ namespace octomap {
         break;
       default:
         OCTOMAP_ERROR("Invalid binary encoding mode.");
-        std::filebuf fb;
-        std::istream is(&fb);
-        return is;
+        return s;
     }
   }
 
@@ -284,9 +282,7 @@ namespace octomap {
         break;
       default:
         OCTOMAP_ERROR("Invalid binary encoding mode.");
-        std::filebuf fb;
-        std::ostream os(&fb);
-        return os;
+        return s;
     }
   }
 
