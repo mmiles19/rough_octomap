@@ -231,8 +231,25 @@ namespace octomap {
       return HSVtoRGB(h, s, v);
     }
 
-    RGBColor getRoughColor(/*float rough_=NAN*/) {
-      return ratioToBW(getRough());
+    RGBColor getRoughColor() {
+      if (isnan(this->getRough())) {
+        // std::cout << "ROUGH COLOR HAS NAN" << std::endl;
+        RGBColor nan_color;
+        nan_color.r = 1.0;
+        nan_color.g = 0.0;
+        nan_color.b = 0.0;
+        return nan_color;
+      } else if (this->getStairLogOdds() > 0.5) {
+        // std::cout << "ROUGH COLOR HAS STAIRS" << std::endl;
+        RGBColor stair_color;
+        stair_color.r = 0.0;
+        stair_color.g = 0.0;
+        stair_color.b = 1.0;
+        return stair_color;
+      } else {
+        // std::cout << "ROUGH COLOR IS NORMAL" << std::endl;
+        return ratioToBW(this->getRough());
+      }
       // return ratioToRGB(getRough());
     }
 
@@ -334,7 +351,7 @@ namespace octomap {
     RoughOcTreeNode* updateNodeStairs(const point3d& value, float log_odds_update);
     RoughOcTreeNode* updateNodeStairs(const OcTreeKey& key, bool is_stairs);
     RoughOcTreeNode* updateNodeStairs(const point3d& value, bool is_stairs);
-    RoughOcTreeNode* updateNodeStairsRecurs(RoughOcTreeNode* node, const OcTreeKey& key,
+    RoughOcTreeNode* updateNodeStairsRecurs(RoughOcTreeNode* node, bool createdRoot, const OcTreeKey& key,
                                                     unsigned int depth, const float& log_odds_update);
     void updateNodeStairLogOdds(RoughOcTreeNode* occupancyNode, const float& update) const;
 

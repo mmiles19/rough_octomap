@@ -89,7 +89,7 @@ namespace octomap {
         }
       }
     }
-    
+
     if (c > 0)
       mean /= (double) c;
 
@@ -98,7 +98,7 @@ namespace octomap {
 
   float RoughOcTreeNode::getMaxChildStairLogOdds() const{
     float max = -std::numeric_limits<float>::max();
-    
+
     if (children !=NULL){
       for (unsigned int i=0; i<8; i++) {
         if (children[i] != NULL) {
@@ -264,15 +264,20 @@ namespace octomap {
       return leaf;
     }
 
+    bool createdRoot = false;
     if (this->root == NULL){
-      return leaf;
+      this->root = new RoughOcTreeNode();
+      this->tree_size++;
+      createdRoot = true;
     }
 
-    return updateNodeStairsRecurs(this->root, key, 0, log_odds_update);
+    return updateNodeStairsRecurs(this->root, createdRoot, key, 0, log_odds_update);
   }
 
-  RoughOcTreeNode* RoughOcTree::updateNodeStairsRecurs(RoughOcTreeNode* node, const OcTreeKey& key,
+  RoughOcTreeNode* RoughOcTree::updateNodeStairsRecurs(RoughOcTreeNode* node, bool node_just_created, const OcTreeKey& key,
                                                     unsigned int depth, const float& log_odds_update) {
+    bool created_node = false;
+
     assert(node);
 
     // follow down to last level
@@ -287,16 +292,16 @@ namespace octomap {
         }
         else {
           // not a pruned node, create requested child
-          // this->creaeNodeChild(node, pos);
-          // created_node = ttrue;
+          this->createNodeChild(node, pos);
+          created_node = true;
         }
       }
 
       // if (lazy_eval)
       //   return updateNodeRecurs(this->getNodeChild(node, pos), created_node, key, depth+1, log_odds_update, lazy_eval);
-      // else 
+      // else
       {
-        RoughOcTreeNode* retval = updateNodeStairsRecurs(this->getNodeChild(node, pos), key, depth+1, log_odds_update);
+        RoughOcTreeNode* retval = updateNodeStairsRecurs(this->getNodeChild(node, pos), created_node, key, depth+1, log_odds_update);
         // prune node if possible, otherwise set own probability
         // note: combining both did not lead to a speedup!
         if (this->pruneNode(node)){
@@ -312,22 +317,22 @@ namespace octomap {
 
     // at last level, update node, end of recursion
     else {
-      // if (use_change_detection) {
-      //   bool occBefore = this->isNodeOccupied(node);
-      //   updateNodeLogOdds(node, log_odds_update);
-
-      //   if (node_just_created){  // new node
-      //     changed_keys.insert(std::pair<OcTreeKey,bool>(key, true));
-      //   } else if (occBefore != this->isNodeOccupied(node)) {  // occupancy changed, track it
-      //     KeyBoolMap::iterator it = changed_keys.find(key);
-      //     if (it == changed_keys.end())
-      //       changed_keys.insert(std::pair<OcTreeKey,bool>(key, false));
-      //     else if (it->second == false)
-      //       changed_keys.erase(it);
-      //   }
-      // } else {
+      if (use_change_detection) {
+        bool occBefore = this->isNodeStairs(node);
         updateNodeStairLogOdds(node, log_odds_update);
-      // }
+
+        if (node_just_created){  // new node
+          changed_keys.insert(std::pair<OcTreeKey,bool>(key, true));
+        } else if (occBefore != this->isNodeStairs(node)) {  // occupancy changed, track it
+          KeyBoolMap::iterator it = changed_keys.find(key);
+          if (it == changed_keys.end())
+            changed_keys.insert(std::pair<OcTreeKey,bool>(key, false));
+          else if (it->second == false)
+            changed_keys.erase(it);
+        }
+      } else {
+        updateNodeStairLogOdds(node, log_odds_update);
+      }
       return node;
     }
   }
@@ -507,10 +512,10 @@ namespace octomap {
       if (this->nodeChildExists(node, i)) {
         const RoughOcTreeNode* child = this->getNodeChild(node, i);
         if      (this->nodeHasChildren(child))  { children_access(i,0) = 1; children_access(i,1) = 1; }
-        else if (this->isNodeOccupied(child)) { 
-          children_access(i,0) = 0; children_access(i,1) = 1; 
+        else if (this->isNodeOccupied(child)) {
+          children_access(i,0) = 0; children_access(i,1) = 1;
           if (child->getRough()>this->rough_binary_thres) { // fails if rough is nan or less than or equal to rough binary threshold
-            children_access(i,2) = 1; // set rough bit 
+            children_access(i,2) = 1; // set rough bit
           }
         }
         else { children_access(i,0) = 1; children_access(i,1) = 0; }
@@ -672,7 +677,7 @@ namespace octomap {
             //   // int bit = ((*rough_char >> k)&1);
             //   std::cout << ((*rough_char>>k)&1);
             //   // std::cout << (*rough_char&(1<<k));
-            //   std::cout << " "; 
+            //   std::cout << " ";
             // }
             // union { float in; int out; } data;
             // data.in = child->getRough();
@@ -723,7 +728,7 @@ namespace octomap {
     //   std::bitset<8> children_byte;
     //   for (int j=0; j<8; j++) {
     //     children_byte[j] = children_access(j,i);
-    //   } 
+    //   }
     //   char children_char = (char) children_byte.to_ulong();
     //   s.write((char*)&children_char, sizeof(char));
     // }
