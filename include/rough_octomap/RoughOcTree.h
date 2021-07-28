@@ -340,11 +340,11 @@ namespace octomap {
 
     /// queries whether a node is stairs according to the tree's parameter for "occupancy"
     inline bool isNodeStairs(const RoughOcTreeNode* node) const{
-      return (node->getStairLogOdds() >= this->occ_prob_thres_log);
+      return (node->getStairLogOdds() > this->occ_prob_thres_log);
     }
 
     inline bool isNodeStairs(const RoughOcTreeNode& node) const{
-      return (node.getStairLogOdds() >= this->occ_prob_thres_log);
+      return (node.getStairLogOdds() > this->occ_prob_thres_log);
     }
 
     RoughOcTreeNode* updateNodeStairs(const OcTreeKey& key, float log_odds_update);
