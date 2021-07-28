@@ -348,9 +348,17 @@ namespace octomap {
     }
 
     RoughOcTreeNode* updateNodeStairs(const OcTreeKey& key, float log_odds_update);
-    RoughOcTreeNode* updateNodeStairs(const point3d& value, float log_odds_update);
+    RoughOcTreeNode* updateNodeStairs(const point3d& pt, float log_odds_update) {
+      OcTreeKey key;
+      if (!this->coordToKeyChecked(pt, key)) return NULL;
+      return updateNodeStairs(key,log_odds_update);
+    }
     RoughOcTreeNode* updateNodeStairs(const OcTreeKey& key, bool is_stairs);
-    RoughOcTreeNode* updateNodeStairs(const point3d& value, bool is_stairs);
+    RoughOcTreeNode* updateNodeStairs(const point3d& pt, bool is_stairs) {
+      OcTreeKey key;
+      if (!this->coordToKeyChecked(pt, key)) return NULL;
+      return updateNodeStairs(key,is_stairs);
+    }
     RoughOcTreeNode* updateNodeStairsRecurs(RoughOcTreeNode* node, bool createdRoot, const OcTreeKey& key,
                                                     unsigned int depth, const float& log_odds_update);
     void updateNodeStairLogOdds(RoughOcTreeNode* occupancyNode, const float& update) const;
