@@ -247,7 +247,7 @@ namespace octomap {
   RoughOcTreeNode* RoughOcTree::updateNodeStairs(const OcTreeKey& key, bool is_stairs) {
     float logOdds = this->prob_miss_log;
     if (is_stairs)
-      logOdds = this->prob_hit_log;
+      logOdds = 0.24;
 
     return updateNodeStairs(key, logOdds);
   }
