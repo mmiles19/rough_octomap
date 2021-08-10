@@ -262,11 +262,21 @@ namespace octomap {
     inline bool getRoughEnabled() const { return roughEnabled; }
     inline void setRoughEnabled(bool e) {
       this->roughEnabled = e;
+      // If disabled, set the bins to 0.  If enabled, only set bins if not already set,
+      // since the read function can set the number of bins
       if (!e) this->num_binary_bins = 0;
+      else if (!this->num_binary_bins) this->num_binary_bins = this->binary_bins_to_use;
+      // Reset the bits calculations
+      this->num_rough_bits = log2(this->num_binary_bins);
+      this->num_bits_per_node = 2 + this->num_rough_bits;
+      if (this->num_binary_bins) this->binsize = 1.0 / (this->num_binary_bins - 1);
     }
 
     inline uint getNumBins() const { return num_binary_bins; }
-    inline void setNumBins(uint n) { this->num_binary_bins = n; }
+    inline void setNumBins(uint n) {
+      this->num_binary_bins = n;
+      if (n) setRoughEnabled(true);
+    }
 
      /**
      * Prunes a node when it is collapsible. This overloaded
@@ -366,17 +376,30 @@ namespace octomap {
 
     // binary io overloaded from OcTreeBase
     std::istream& readBinaryData(std::istream &s);
-    std::ostream& writeBinaryData(std::ostream &s) const;
+    std::ostream& writeBinaryData(std::ostream &s);
     std::istream& readBinaryNode(std::istream &s, RoughOcTreeNode* node);
-    std::ostream& writeBinaryNode(std::ostream &s, const RoughOcTreeNode* node) const;
+    std::ostream& writeBinaryNode(std::ostream &s, const RoughOcTreeNode* node);
     std::istream& readBinaryNodeViaThresholding(std::istream &s, RoughOcTreeNode* node);
-    std::ostream& writeBinaryNodeViaThresholding(std::ostream &s, const RoughOcTreeNode* node) const;
+    std::ostream& writeBinaryNodeViaThresholding(std::ostream &s, const RoughOcTreeNode* node);
     std::istream& readBinaryNodeViaBinning(std::istream &s, RoughOcTreeNode* node);
-    std::ostream& writeBinaryNodeViaBinning(std::ostream &s, const RoughOcTreeNode* node) const;
+    std::ostream& writeBinaryNodeViaBinning(std::ostream &s, const RoughOcTreeNode* node);
 
     RoughBinaryEncodingMode binary_encoding_mode;
     float rough_binary_thres; // must be between 0 and 1
+
+    // Binning vars to preallocate and reduce computation per node during read/write
+    // These could all be created/destroyed at beginning/end of publishing as well
     uint num_binary_bins; // must be power of 2
+    uint num_rough_bits;
+    uint num_bits_per_node; // Controls how much of the bitset is used! (num*8)
+    double binsize;
+
+    // Prealloc - All values must correspond!  Using dynamic causes slowdown
+    const uint binary_bins_to_use = 16; // must be power of 2; used when roughness is enabled
+    std::bitset<4> rough_bits; // size must equal to log2(binary_bins_to_use)!
+    std::bitset<48> bitmask; // size needs to be same as below!
+    std::bitset<48> read_byte; // size needs to be same as below!
+    std::bitset<48> children; // (log2(num_binary_bins) + 2) * 8 - must be set >= binary_bins_to_use and divisible by 8!
 
   protected:
     bool roughEnabled = false;

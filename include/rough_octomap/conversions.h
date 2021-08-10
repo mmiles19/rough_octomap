@@ -205,7 +205,7 @@ namespace octomap_msgs{
    * @return success of serialization
    */
   template <class OctomapT>
-  static inline bool binaryMapToMsg(const OctomapT& octomap, Octomap& msg){
+  static inline bool binaryMapToMsg(OctomapT& octomap, Octomap& msg){
     msg.resolution = octomap.getResolution();
     msg.id = octomap.getTreeType() + Suffix(&octomap);
     msg.binary = true;
